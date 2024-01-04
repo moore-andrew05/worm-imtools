@@ -6,9 +6,13 @@ import pandas as pd
 from .rme_parser import *
 
 class KeemPlot:
-    def __init__(self, path, group_number=1, max_value=65535, threshold=0, final_len=3500):
+    def __init__(self, path, channel_info, group_number=1, max_value=65535, threshold=0, final_len=3500):
+        
         if path[-1] != "/":
             path += "/"
+        
+        
+        self.channel_info = channel_info
         self.metadata = rme_parser(path + "README.txt")
         self.header = self.metadata.header
         self.dbdata = self.metadata.infos[group_number-1]
@@ -16,13 +20,13 @@ class KeemPlot:
         self._final_len = final_len
         self._threshold = threshold / max_value
         self.Raw_Arrays = self._gen_raw_arrays(path)
-        self.flatdata_ni, self.flatdata, self.flatdata_ut, self.barcodes = self._process(self.Raw_Arrays)
+        self.flatdata_ni, self.flatdata, self.barcodes = self._process(self.Raw_Arrays)
 
     def _gen_raw_arrays(self, path):
         image_names = [i for i in os.listdir(path) if not i.startswith(".") and not i.endswith(".txt")]
         Raw_Images = []
         for i, name in enumerate(image_names):
-            Raw_Images.append(io.imread(path+name)[0,:,:])
+            Raw_Images.append([io.imread(path+name)[i,:,:] for i in range(self.channel_info[:,1])])
 
         return Raw_Images
     
@@ -40,19 +44,30 @@ class KeemPlot:
         flatdata_ut = []
         barcodes = []
 
-        for _, image in enumerate(Raw_data):
-            arr = image.max(axis=0)                             # Collapse 2d image into vector based on max value in each column
-            arr = arr/self._max_value                           # Normalize to values between 0 and 1.
-            flatdata_ni.append(np.copy(arr))                    # Append uninterpolated arrays
 
-            arr_int = self._interp1d(arr, self._final_len)      # Interpolate the vector into 10000 values.
 
-            flatdata_ut.append(np.copy(arr_int))                # Append unthresholded arrays
-            arr_int[arr_int < self._threshold] = 0              # Threshold out noise/unwanted dim signal.
-            flatdata.append(np.copy(arr_int))
-            barcodes.append(self.create_barcode(arr_int))
+        for _, channels in enumerate(Raw_data):
+            img_arrs_ni = []
+            img_arrs = []
+            img_barcodes = []
+
+
+            for image in channels:
+                arr = image.max(axis=0)                             # Collapse 2d image into vector based on max value in each column
+                arr = arr/self._max_value                           # Normalize to values between 0 and 1.
+                flatdata_ni.append(np.copy(arr))                    # Append uninterpolated arrays
+
+                arr_int = self._interp1d(arr, self._final_len)      # Interpolate the vector into 10000 values.
+
+                img_arrs_ni.append(arr)
+                img_arrs.append(arr_int)
+                img_barcodes.append(self.create_barcode(arr_int))
+
+            flatdata.append(np.copy(img_arrs))
+            flatdata_ni.append(np.copy(img_arrs_ni))
+            barcodes.append(np.copy(img_barcodes))           
             
-        return flatdata_ni, flatdata, flatdata_ut, barcodes
+        return flatdata_ni, flatdata, barcodes
     
 
     def plot_barcodes(self, barcodes, save=None):
