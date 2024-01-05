@@ -1,9 +1,10 @@
 import os
-from skimage import io
+from skimage import io # type: ignore
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from .rme_parser import *
+import uuid
 
 class KeemPlot:
     def __init__(self, path, channel_info, group_number=1, max_value=65535, threshold=0, final_len=3500):
@@ -20,13 +21,14 @@ class KeemPlot:
         self._final_len = final_len
         self._threshold = threshold / max_value
         self.Raw_Arrays = self._gen_raw_arrays(path)
+        self.uuids = [uuid.uuid1() for _ in range(len(self.Raw_Arrays))]
         self.flatdata_ni, self.flatdata, self.barcodes = self._process(self.Raw_Arrays)
 
     def _gen_raw_arrays(self, path):
         image_names = [i for i in os.listdir(path) if not i.startswith(".") and not i.endswith(".txt")]
         Raw_Images = []
-        for i, name in enumerate(image_names):
-            Raw_Images.append([io.imread(path+name)[i,:,:] for i in range(self.channel_info[:,1])])
+        for _, name in enumerate(image_names):
+            Raw_Images.append([io.imread(path+name)[:,:,i] for i in list(map(lambda x: x[1], self.channel_info))]) # type: ignore
 
         return Raw_Images
     
@@ -41,7 +43,6 @@ class KeemPlot:
     def _process(self, Raw_data):
         flatdata_ni = []                                        # Flat data no interpolation
         flatdata = []
-        flatdata_ut = []
         barcodes = []
 
 
@@ -53,21 +54,22 @@ class KeemPlot:
 
 
             for image in channels:
+                print(image.shape)
                 arr = image.max(axis=0)                             # Collapse 2d image into vector based on max value in each column
                 arr = arr/self._max_value                           # Normalize to values between 0 and 1.
-                flatdata_ni.append(np.copy(arr))                    # Append uninterpolated arrays
+                     
+                img_arrs_ni.append(np.copy(arr))                             # Append uninterpolated arrays
 
                 arr_int = self._interp1d(arr, self._final_len)      # Interpolate the vector into 10000 values.
 
-                img_arrs_ni.append(arr)
-                img_arrs.append(arr_int)
+                img_arrs.append(np.copy(arr_int))
                 img_barcodes.append(self.create_barcode(arr_int))
 
             flatdata.append(np.copy(img_arrs))
             flatdata_ni.append(np.copy(img_arrs_ni))
             barcodes.append(np.copy(img_barcodes))           
             
-        return flatdata_ni, flatdata, barcodes
+        return flatdata_ni, np.asarray(flatdata), np.asarray(barcodes)
     
 
     def plot_barcodes(self, barcodes, save=None):
@@ -87,14 +89,24 @@ class KeemPlot:
 
     def generate_db(self):
         self.df = pd.DataFrame(columns=self.header, data=self.dbdata)
-        self.df["array_vals"] = self.flatdata_ut
-        self.df["array_vals_ni"] = self.flatdata_ni
+        for i in range(4):
+            self.df[f"channel{i}_name"] = np.nan
+            self.df[f"channel{i}_arr_vals"] = np.nan
+            self.df[f"channel{i}_arr_vals_ni"] = np.nan
+
+        for i, tup in enumerate(self.channel_info):
+            self.df[f"channel{i}_name"] = tup[0]
+            self.df[f"channel{i}_arr_vals"] = list(self.flatdata[:, i])
+            self.df[f"channel{i}_arr_vals_ni"] = [channel[i] for channel in self.flatdata_ni] 
+
+        self.df["uuid"] = self.uuids
+
 
 
     def update_db(self, path):
         old = pd.read_pickle(path)
         new = pd.concat([old, self.df], axis=0, ignore_index=True, join="outer")
-        new = new.drop_duplicates(subset=["ID"], keep="last")
+        new = new.drop_duplicates(subset=["uuid"], keep="last")
         new.reset_index(drop=True, inplace=True)
         new.to_pickle(path)
 
