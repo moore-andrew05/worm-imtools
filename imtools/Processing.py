@@ -92,7 +92,14 @@ class Processor:
     
 class BarcodePlotter:
     def __init__(self):
-        pass
+        """
+        Colormaps: Custom colormaps
+        """
+        cmap_black_to_red = plt.cm.colors.LinearSegmentedColormap.from_list("black_red", ["black", "red"])
+        cmap_black_to_green = plt.cm.colors.LinearSegmentedColormap.from_list("black_green", ["black", "green"])
+
+
+
 
     def create_barcodes(self, arrs):
 
@@ -123,4 +130,4 @@ class BarcodePlotter:
 
     def plot_barcodes_multi(self, barcodes, save=None):
         
-        
+        pass
