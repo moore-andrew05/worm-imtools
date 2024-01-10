@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='wormimtools',
-    version='0.2.0',
+    version='0.2.1',
     packages=find_packages(),
     author='Andrew Moore',
     author_email='moore.andrew0598@gmail.com',
