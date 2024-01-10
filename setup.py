@@ -4,6 +4,7 @@ setup(
     name='wormimtools',
     version='0.2.1',
     packages=find_packages(),
+    install_requires=["numpy", "scipy", "matplotlib", "pandas", "scikit-image"],
     author='Andrew Moore',
     author_email='moore.andrew0598@gmail.com',
     description='A short description of my package',
