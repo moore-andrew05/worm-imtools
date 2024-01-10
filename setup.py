@@ -9,7 +9,7 @@ setup(
     description='A short description of my package',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/moore-andrew05/imaging-tools',
+    url='https://github.com/moore-andrew05/imtools',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
