@@ -2,14 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name='wormimtools',
-    version='0.1',
+    version='0.2.0',
     packages=find_packages(),
-    author='Your Name',
-    author_email='your.email@example.com',
+    author='Andrew Moore',
+    author_email='moore.andrew0598@gmail.com',
     description='A short description of my package',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/yourusername/imaging-tools',
+    url='https://github.com/moore-andrew05/imaging-tools',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
