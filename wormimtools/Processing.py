@@ -13,7 +13,7 @@ class Processor:
 
         :param path: Absolute path to directory containing images and README.txt (can use relative path if in same directory)
         :param channel_info: List of tuples containing channel names and index of  channels as they appear in image, max length 4 \\
-        Example: [("bacteria_name_1", 0), ("bacteria_name_2", 1)]
+        Example: [("channel_name_1", 0), ("channel_name_2", 1)]
         :param group_number: Number of group to be processed if multiple groups appear in README.txt. Not index based, first group is 1.
         :param max_value: Maximum value of pixels in images. Default is 65535. Used to normalize images, can be any value.
         :param final_len: Length of final 1D arrays. Default is 3500. Used to interpolate images, can be any value.
@@ -29,7 +29,6 @@ class Processor:
         self._max_value = max_value
         self._final_len = final_len
         self.Raw_Arrays = self._gen_raw_arrays(path)
-        self.uuids = [uuid.uuid1() for _ in range(len(self.Raw_Arrays))]
         self.flatdata_ni, self.flatdata, self.raw = self._process(self.Raw_Arrays)
 
     def _gen_raw_arrays(self, path):
@@ -127,7 +126,6 @@ class Processor:
             self.df[f"channel{i}_arr_vals_ni"] = [channel[i] for channel in self.flatdata_ni] 
             self.df[f"channel{i}_arr_vals_raw"] = [channel[i] for channel in self.raw]
 
-        self.df["uuid"] = self.uuids
 
 
 
