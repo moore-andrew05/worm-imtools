@@ -3,8 +3,10 @@ from skimage import io                                                 # type: i
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from .rme_parser import *
+from .utils.rme_parser import rme_parser
+from .utils.utils import interp1d, normalize
 import uuid
+import re
 
 class Processor:
     def __init__(self, path, channel_info, group_number=1, max_value=65535, final_len=3500):
@@ -39,6 +41,7 @@ class Processor:
         :returns: A list of lists of 2D arrays, nested lists are length 1 if single channel, length 2-4 if multi channel.
         """
         image_names = [i for i in os.listdir(path) if not i.startswith(".") and not i.endswith(".txt")]
+        image_names = sorted(image_names, key = lambda x: int(re.findall(r'[\d]+', x)[0]))
         Raw_Images = []
 
 
@@ -58,17 +61,6 @@ class Processor:
                 Raw_Images.append([img[:,:,i] for i in list(map(lambda x: x[1], self.channel_info))]) # type: ignore
 
         return Raw_Images
-    
-    def _interp1d(self, array, new_len):
-        """
-        Interpolates a 1D array to a new length.
-
-        :param array: 1D array to be interpolated
-        :param new_len: Length of new array
-        """
-
-        la = len(array)
-        return np.interp(np.linspace(0, la - 1, num=new_len), np.arange(la), array)
     
     def _process(self, Raw_data):
         """
@@ -91,11 +83,11 @@ class Processor:
             for image in channels:
                 arr = image.max(axis=0)                             # Collapse 2d image into vector based on max value in each column
                 img_arrs_raw.append(np.copy(arr))                   # Append raw arrays
-                arr = arr / self._max_value                         # Normalize to values between 0 and 1.
+                arr = normalize(arr, self._max_value)                      # Normalize to values between 0 and 1.
                 # arr = arr / np.max(arr)               
                 img_arrs_ni.append(np.copy(arr))                    # Append uninterpolated arrays
 
-                arr_int = self._interp1d(arr, self._final_len)      # Interpolate the vector into uniform length.
+                arr_int = interp1d(arr, self._final_len)      # Interpolate the vector into uniform length.
 
                 img_arrs.append(np.copy(arr_int))
 
@@ -131,15 +123,16 @@ class Processor:
 
     def update_db(self, path):
         """
-        Uptades an existing dataframe with new data from processed images.
+        Uptades an existing dataframe with new data from processed images. WARNING: Not recommended
+        unless using only default values in dataframe. If you have added other channels merge your data 
+        yourself. 
 
         :param path: Absolute path to existing dataframe stored in pkl format.
         :return: None
         """
 
         old = pd.read_pickle(path)
-        new = pd.concat([old, self.df], axis=0, ignore_index=True, join="outer")
-        new = new.drop_duplicates(subset=["uuid"], keep="last")
+        new = pd.concat([old, self.df])
         new.reset_index(drop=True, inplace=True)
         new.to_pickle(path)
 
@@ -160,19 +153,29 @@ class BarcodePlotter:
         """
         Plots 1D arrays as "barcodes" 
 
-        :param data: Array of len 1 arrays containing 1D arrays to be plotted
+        :param data: Array of len 1 arrays containing 1D arrays to be plotted or array of 1D arrays. 
         :param save: If not None, saves the figure to the path specified by save
         :return: None
         """
-
 
         fig, axes = plt.subplots(len(data), 1)
 
 
         for i, arr in enumerate(data):
-            bar = self.create_barcode(arr[0])
-            axes[i].imshow(bar, cmap="Greys_r", vmin = 0, vmax=1.0)
-            axes[i].axis("off")
+            if isinstance(arr[0], (np.floating, float)):
+                bar = self.create_barcode(arr)
+            else:
+                bar = self.create_barcode(arr[0])
+
+            if len(data) == 1:
+                break
+            else:
+                axes[i].imshow(bar, cmap="Greys_r", vmin = 0, vmax=1.0)
+                axes[i].axis("off")
+
+        if len(data) == 1:
+            axes.imshow(bar, vmin = 0, vmax=1.0)
+            axes.axis("off")
 
         fig.tight_layout(pad=0)
         
@@ -199,8 +202,16 @@ class BarcodePlotter:
 
             final = np.vstack([bc0[:int(len(bc0)/2)], merged, bc1[int(len(bc1)/2):]])
 
-            axes[i].imshow(final, vmin = 0, vmax=1.0)
-            axes[i].axis("off")
+            if len(data) == 1:
+                break
+
+            else:
+                axes[i].imshow(final, vmin = 0, vmax=1.0)
+                axes[i].axis("off")
+
+        if len(data) == 1:
+            axes.imshow(final, vmin = 0, vmax=1.0)
+            axes.axis("off")
 
         fig.tight_layout(pad=0)
         

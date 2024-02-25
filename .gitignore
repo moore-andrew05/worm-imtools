@@ -156,6 +156,9 @@ cython_debug/
 .DS_Store
 /*.ipynb
 test_images
+*.png
+*.svg
+*.csv
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
