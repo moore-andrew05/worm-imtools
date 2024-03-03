@@ -174,7 +174,7 @@ class BarcodePlotter:
                 axes[i].axis("off")
 
         if len(data) == 1:
-            axes.imshow(bar, vmin = 0, vmax=1.0)
+            axes.imshow(bar, cmap="Greys_r", vmin = 0, vmax=1.0)
             axes.axis("off")
 
         fig.tight_layout(pad=0)
@@ -183,7 +183,7 @@ class BarcodePlotter:
         if save is not None:
             fig.savefig(save, dpi=1200)
 
-    def plot_barcodes_dual(self, data, save=None):
+    def plot_barcodes_dual(self, data, cmap1 = None, cmap2 = None, save=None):
         """
         Plots pairs of 1D arrays as individual "barcodes" and as a merged form
 
@@ -191,12 +191,16 @@ class BarcodePlotter:
         :param save: If not None, saves the figure to the path specified by save
         :return: None
         """
+        if not cmap1:
+            cmap1 = self.cmap_black_to_red
+        if not cmap2:
+            cmap2 = self.cmap_black_to_green
 
         fig, axes = plt.subplots(len(data), 1)
 
         for i, bars in enumerate(data):
-            bc0 = self.cmap_black_to_red(self.create_barcode(bars[0]))
-            bc1 = self.cmap_black_to_green(self.create_barcode(bars[1]))
+            bc0 = cmap1(self.create_barcode(bars[0]))
+            bc1 = cmap2(self.create_barcode(bars[1]))
 
             merged = np.maximum(bc0, bc1)
 
